@@ -1,5 +1,5 @@
 ---
-title: "PlayStudios - analizing video data"
+title: "PlayStudios - analyzing video data"
 author: "Ilona Zaslavsky"
 date: "February 2020"
 output: html_document
