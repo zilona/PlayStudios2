@@ -18,8 +18,8 @@ Understanding this would allow to optimize the videos promoted on the home-page 
 
 ### The purpuse of the task
 * Classifing each video to one of the three categories:\
-   -- "Hot"  
-   -- "Stable and Popular"  
+   -- "Hot Videos"  
+   -- "Stable and Popular Videos"  
    -- "Everything else"  
 
 * Find the main characteristics of the "hot videos"  
@@ -53,6 +53,7 @@ video_count$date <- as.Date(video_count$date)
 
 # glimpse of the data
 knitr::kable(head(video_count),caption = "glimpse to 'video_count' data")
+
 #kable_styling(kable_input = "glimpse to 'video_count' data",full_width = F)
 # summary of the data
 knitr::kable(summary(video_count),caption = "summary of 'video_count'")
@@ -99,7 +100,8 @@ avg <- round(mean(video_count$count),2)
 med <- median(video_count$count)
 ```
 
-Each video is shown on the home page for 121 days. However, for some videos there weren't views every day. To deal with this I added the value *zero* under the 'count' to the missing dates of the relevant videos.  
+Each video is shown on the home page for 121 days. However, for some videos there weren't views every day.   
+To deal with this I added the value *zero* under the 'count' to the missing dates of the relevant videos.  
 After this, we get count of views for each video over all the 121 days.  
 The mean of the 'count' changed to `r avg` and the median stayed `r med`.  
 
@@ -167,7 +169,7 @@ The histogram shows us the distribution of the total views for all the videos. W
 ### Calculate the linear regression's slope
 The idea is to check the trend of the videos over the days.  
 I'll use the linear regression analysis to quantify the strength of the relationship between the dates and the count of views, and use the regression's slope to see the stability of the count of views.  
-When the slope is negative: The more positive the slope (closer to 0) the relatively stable its trend.
+**When the slope is negative:** The more positive the slope (closer to 0) the relatively stable its trend.
 
 
 
@@ -241,7 +243,7 @@ knitr::kable(summary(analized_data))
 
 
 After showing the distribution and the characteristics of each varieble I can use any clustering model like the 'K-means' madel to classify the categories.  
-However, the 'K-means' madel didn't consider the importance of the regressions slope (the variable that represent the stability of the trend of viewing the videos).
+However, in my opinion the 'K-means' madel didn't consider the best the importance of the regressions slope (the variable that represent the stability of the trend of viewing the videos).
 
 ```{r kmeans model, echo = F}
 
@@ -277,8 +279,9 @@ ggplot(analized_data,aes(analized_data$`count of views`,analized_data$`regressio
 ```
 
 Looking at the classified three groups, I marked two points that I would change their classifying.    
-The 'hot video' that marked has an outlier big slope. Even though the number of views was high, the trend of the views shows that it went down fast. Means, the video lost its relevance to the end of the 121 days period.  
-The second point I marked has less total views, but the slope shows a steady trend of views over the 121 days. I would say that this is a "hot video" because it has steady trend of views, and still big amount of views.  
+-- The 'hot video' that marked has an outlier big slope. Even though the number of views was high, the trend of the views shows that it went down fast. Means, the video lost its relevance to the end of the 121 days period.  
+-- The second point I marked has less total views, but the slope shows a steady trend of views over the 121 days. I would say that this is a "hot video" because it has steady trend of views, and still big amount of views.  
+
 Looking at this, I was convinced that count of views is an influencing variable, but also the slope variable, that shows how much the trend of views is steady.
 
 
@@ -297,11 +300,11 @@ cov_nor <- (analized_data$`count of views`-mean(analized_data$`count of views`) 
 rs_nor <- (analized_data$`regression slope`-mean(analized_data$`regression slope`) )/sd(analized_data$`regression slope`)
 
 # make the Weighting
-Weighting <- c("count" = 0.82, "regli" = 0.18)
+Weighting <- c("count" = 0.80, "regli" = 0.2)
 analized_data$shiklul <- cov_nor*Weighting["count"] + rs_nor*Weighting["regli"]
 
 # choose the part of every category
-represent <- c(0.5,0.85)
+represent <- c(0.5,0.8)
 
 qu <- quantile(analized_data$shiklul,represent)
 analized_data$rank_after_Weighting <- 2
@@ -327,71 +330,149 @@ ggplot(analized_data,aes(analized_data$`count of views`,analized_data$`regressio
 * The hot videos represent top `r paste0(100-represent[2]*100) ` videos that got the best rank after Weighting the variebles. 
 The "everything else" category represent first `r paste0(represent[1]*100) ` of the data with the smallest rank, and the videos under the 'Stable and Popular' category got the rank between thoes two categories (`r 100-as.numeric(represent[1]*100)-as.numeric(100-represent[2]*100) `  videos).
 
-##  Analize video_count
-
-
-**hypothesis?** **[if all had the same mean of watched, did we have the same variance?]**
-**when we have the biggest amount of watchers- specific days (saterday?) or specific time existence in the site?- periods**
-
+##  Find characteristics from the `video features` data
 
 
 After categorizing each video, I'll check the features of each category and find the the characteristics of the "hot videos".
 
+**First, summary the video features:**
 
 ```{r load video features, echo=FALSE}
 video_features <- read.csv("C:\\Users\\Uri Shiran\\Documents\\homeTest\\PlayStudios2/Data/video_features.csv")
 # make the upload_date as date
 video_features$video_upload_date <- as.Date(video_features$video_upload_date)
 
-merged_data <- merge(video_features,analized_data[,c("video id","rank_after_Weighting")],by.x = "video_id", by.y = "video id")
-
-knitr::kable(summary(merged_data))
+knitr::kable(summary(video_features))
 
 # make video_quality as number
 video_features$video_quality <- as.numeric(substr(video_features$video_quality,1,nchar(as.character(video_features$video_quality))-1))
+
+
+
+#analized_data$rank_after_Weighting <- analized_data$kmeans
 ```
 
-```{r}
 
-knitr::kable(table(merged_data$rank_after_Weighting,merged_data$video_length))
+Now, let's see the distribution of the quality of the video and the length of the videos parted by the categories:
 
-knitr::kable(table(merged_data$rank_after_Weighting,merged_data$video_quality))
+
+```{r show charachtiristics, echo=FALSE}
+
+# add the catedory for each video
+merged_data <- merge(video_features,analized_data[,c("video id","rank_after_Weighting")],by.x = "video_id", by.y = "video id")
+
+merged_data$rank_after_Weighting <- as.factor(merged_data$rank_after_Weighting)
+
+
+#knitr::kable(table(merged_data$rank_after_Weighting,merged_data$video_length))
+
+#knitr::kable(table(merged_data$rank_after_Weighting,merged_data$video_quality))
 
 # table(merged_data$rank_after_Weighting,merged_data$video_language)
 
-ggplot(merged_data,aes(video_quality,video_length,col = as.factor(rank_after_Weighting)))+
-  geom_point(size = 3)+
-  scale_colour_discrete(name  ="Caterory",
+
+ggplot(merged_data,aes(as.factor(video_quality),fill = as.factor(rank_after_Weighting)))+
+  geom_bar()+
+  scale_fill_discrete(name  ="Caterory",
                             breaks=c("1", "2","3"),
                             labels=c("Hot videos", "Stable and Popular","Everything else"))+
-  labs(title = "video quality and the video length of each category")
+  labs(title = "each category representation in video quality")+
+  xlab("video quality in pixels")+
+  scale_y_continuous(breaks = seq(0,25,5))
+
+
+ggplot(merged_data,aes(as.factor(video_length),fill = as.factor(rank_after_Weighting)))+
+  geom_bar()+
+  scale_fill_discrete(name  ="Caterory",
+                            breaks=c("1", "2","3"),
+                            labels=c("Hot videos", "Stable and Popular","Everything else"))+
+  labs(title = "each category representation in video_length")+
+  xlab("video length in seconds")+  
+  scale_y_continuous(breaks = seq(0,10,1))
+
+
+
+# ggplot(merged_data,aes(video_length,as.factor(video_quality),col = as.factor(rank_after_Weighting)))+
+#   geom_point(size = 4)+
+#   scale_colour_discrete(name  ="Caterory",
+#                             breaks=c("1", "2","3"),
+#                             labels=c("Hot videos", "Stable and Popular","Everything else"))+
+#   labs(title = "video quality and the video length of each category")
+
+
 
 ```
 
 
-* What is the recommended time for the Videos?
-# Do the video quality influence the times the video was seen? (as better quality then more watchers)
-# There is preffered language? Can I explain why?
-# Do I find any influance of the date the video was uploaded?
+### Conclusions:
+We see that the hot videos less then 20 seconds. Moreover, it seems that the quality of the video influence on the title of 'hot video'. (hot videos have good quality).  
+To ensure my conclusions, I'll use Chi-squared test.  
+First, I'll define video length as factor with four levels.
 
-## Alalize
+```{r make factor of video length , echo=FALSE}
+len_fac <- cut(merged_data$video_length,c(seq(10,30,5)))
+merged_data$length_factor <- len_fac
 
-```{r}
-hist(video_features$video_length)
-table(video_features$video_language)
+ggplot(merged_data,aes(as.factor(length_factor),fill = as.factor(rank_after_Weighting)))+
+  geom_bar()+
+  scale_fill_discrete(name  ="Caterory",
+                            breaks=c("1", "2","3"),
+                            labels=c("Hot videos", "Stable and Popular","Everything else"))+
+  labs(title = "each category representation in video_length")+
+  xlab("video length in seconds")
 
 
-video_data <- merge(video_features,video_count_total,by = "video_id")
+alpha <- 0.05
+```
 
-plot(video_data)
+Now, I test the hypothesis whether videos' category is independent of:  
+* the length of the video   
+* the quality of the video    
+* the language of the video   
+at `r alpha` significance level.
 
-ggplot(video_data,aes(video_data$video_length,video_data$count,col = video_data$video_language))+
-   geom_point()
 
-ggplot(video_data,aes(video_data$video_quality,video_data$count,col = video_data$video_language,size = video_data$video_length, alpha = 0.5 ))+
-  geom_point()
+I apply the chisq.test function to the contingency tables, and found the p-values are:
+```{r Chi-squared test, echo=F, warning=FALSE}
 
+tb_qual <- table(merged_data$video_quality,merged_data$rank_after_Weighting)
+tb_langu <- table(merged_data$video_language,merged_data$rank_after_Weighting)
+tb_len_fac <- table(merged_data$length_factor,merged_data$rank_after_Weighting)
+tb_len <- table(merged_data$video_length,merged_data$rank_after_Weighting)
+
+# ch_len <- chisq.test(tb_len)
+
+ch_len_f <- chisq.test(tb_len_fac)
+ch_qual <- chisq.test(tb_qual)
+ch_lang <- chisq.test(tb_langu)
 
 ```
 
+
+|video category indipendent to |P-value| reject the null hypotisis|
+|------------------------------|-------| -------------------------|
+| factored length of the video |`r ch_len_f$p.value`| `r ch_len_f$p.value < alpha`|
+| quality of the video |`r ch_qual$p.value`| `r ch_qual$p.value < alpha`|
+| language of the video |`r ch_lang$p.value`| `r ch_lang$p.value < alpha`|
+
+As the p-value is smaller than the `r alpha` significance level, we do reject the null hypothesis that the category of the video is independent of the video's length and quality.  
+We do not reject the null hypothesis that the category of the video is independent of the video's language.
+
+## -- The bottom line -- 
+The main characteristics of the "hot videos" are the length of the video (the shorter the better) and the quality of the video ('hot videos' are in good quality).    
+I'll use this information to suggest the head of product publish short (till 20 seconds) videos and with good quality (720p and better) in the "hot spots" of the page in the site (top page).   
+I believe that this information would allow to optimize the videos promoted on the home-page and, therefore, maximize ads revenue.  
+
+
+### Last word
+**More research questions that I asked and didn't answer on them:**  
+* What is the recommended time for the videos to be uploaded and seen. in other words, when do we have the biggest amount of watchers? 
+(what days, what month, what period of the year?)  
+* The information on the video's issue was missing and obviously this also affects on the results of the data analysis.  
+* The information of the possition of the video in the site(top page, bottom page) also affects on the results.
+
+
+ *Thanks for reading my research. I'm open to any feedback*    
+
+--THE END--
 
