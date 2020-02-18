@@ -327,102 +327,31 @@ ggplot(analized_data,aes(analized_data$`count of views`,analized_data$`regressio
 * The hot videos represent top `r paste0(100-represent[2]*100) ` videos that got the best rank after Weighting the variebles. 
 The "everything else" category represent first `r paste0(represent[1]*100) ` of the data with the smallest rank, and the videos under the 'Stable and Popular' category got the rank between thoes two categories (`r 100-as.numeric(represent[1]*100)-as.numeric(100-represent[2]*100) `  videos).
 
-
-
-
-## Weighting of variables count of views and regressions slope.
-Looking at the 
-By the reason that I'm not familiar with the data,  I'll choose percentage that I feel is right to define the categories. Later, after I find the feachers of each category, maybe the definition of the categories will be changed a little bit.
-**definition of the categories:**
-hot videos - top 10% videos that had the most count of views in our data **and had increasing/stable lot of views** (**Why top 10%?**)
-Stable and Popular - 50%-90% : not 'hot videos' but more then median of the videos and **were stable over the time**
-Everything else - 0%-50%
-
-
-
-```{r plot the clustering, eval=FALSE, include=FALSE}
-plot(analized_data$`count of views`,analized_data$`regression slope`)
-points(analized_data$`count of views`[analized_data$rank_after_Weighting==1],analized_data$`regression slope`[analized_data$rank_after_Weighting==1],col = 1,pch = 16)
-points(analized_data$`count of views`[analized_data$rank_after_Weighting==2],analized_data$`regression slope`[analized_data$rank_after_Weighting==2],col = 2,pch = 16)
-points(analized_data$`count of views`[analized_data$rank_after_Weighting==3],analized_data$`regression slope`[analized_data$rank_after_Weighting==3],col = 3,pch = 16)
-
-
-
-plot(analized_data$`count of views`,analized_data$`regression slope`)
-(cl <- kmeans(analized_data[,3:2], 3))
-plot(analized_data[,3:2], col = cl$cluster)
-points(cl$centers, col = 1:3, pch = 8)
-abline(v = 12518.939,col = "red",lty = 3)
-abline(a = 0,b=-1,col = "blue",lty = 1)
-
-
-a <- analized_data[order(-analized_data$`mean of views`,analized_data$`regression slope`,analized_data$`count of views`),]
-
-
-# pca <- prcomp(analized_data, scale = T)
-# autoplot(kmeans(analized_data, 3), data = a)
-# autoplot(prcomp(analized_data[,2:3]))
-# (cl <- kmeans(analized_data[,2:3], 3))
-# plot(analized_data[,2:3], col = cl$cluster)
-# points(cl$centers, col = 1:3, pch = 8)
-```
-  
-
-
-
-## questions:
-* For each video, do we see a tendency upon the dates?
-* What Videoes had most views and what less?
-
-
-
 ##  Analize video_count
 
 
-* Count total views for each video
-* Count the standard-deviation of number of views - as bigger the value then bigger the variance (less stable)
-* found they have high corelation. **hypothesis?** **[if all had the same mean of watched, did we have the same variance?]**
-* Range of dates for each video: first date + last date
-    * I discoverd that all the videos had a range of 120 days in a row 
-    * question to explore not this time: 
-    **when we have the biggest amount of watchers- specific days (saterday?) or specific time existence in the site?- periods**
-* How much samples for each video: I recieved not only 120, that means that there are videos that didn't have any watchers in some days
-```{r  analize video count }
-
-# see if we have any visual correlation between the count of views of the videos and their variance
-#plot(video_count_total$count,video_count_total$`sd(count)`)
-# the corelation
-#cor(video_count_total$count,video_count_total$`sd(count)`)
-
-
-
-
-
-
-gp <- ggplot(video_count[1:20,], aes(x = video_count$date[1:20], y = video_count$video_id[1:20], size = video_count$count[1:20]))+
-  geom_point()
-
-
-```
+**hypothesis?** **[if all had the same mean of watched, did we have the same variance?]**
+**when we have the biggest amount of watchers- specific days (saterday?) or specific time existence in the site?- periods**
 
 
 
 After categorizing each video, I'll check the features of each category and find the the characteristics of the "hot videos".
 
 
-```{r load video features, include=FALSE}
+```{r load video features, echo=FALSE}
 video_features <- read.csv("C:\\Users\\Uri Shiran\\Documents\\homeTest\\PlayStudios2/Data/video_features.csv")
 # make the upload_date as date
 video_features$video_upload_date <- as.Date(video_features$video_upload_date)
+
+merged_data <- merge(video_features,analized_data[,c("video id","rank_after_Weighting")],by.x = "video_id", by.y = "video id")
+
+knitr::kable(summary(merged_data))
 
 # make video_quality as number
 video_features$video_quality <- as.numeric(substr(video_features$video_quality,1,nchar(as.character(video_features$video_quality))-1))
 ```
 
 ```{r}
-merged_data <- merge(video_features,analized_data[,c("video id","rank_after_Weighting")],by.x = "video_id", by.y = "video id")
-
-summary(merged_data)
 
 knitr::kable(table(merged_data$rank_after_Weighting,merged_data$video_length))
 
