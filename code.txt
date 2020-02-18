@@ -1,0 +1,340 @@
+---
+title: "PlayStudios task2"
+author: "Ilona Zaslavsky"
+date: "February 9, 2020"
+output: html_document
+---
+
+
+```{r libraries, include=FALSE}
+library(ggplot2)
+```
+
+## Background
+The Head of Product has identified as a major problem for the site a very high home page drop-off rate. That is, users come to the home-page and then leave the site without taking any action or watching any video.   
+Since customer acquisition costs are very high, this is a huge problem: the company is spending a lot of money to acquire users who don't generate any revenue.
+This company is interested in knowing whether a video is "hot" , stable or going down.   
+Understanding this would allow to optimize the videos promoted on the home-page and, therefore, maximize ads revenue.
+
+### The purpuse of the task
+Classifing each video to one of the three categories:\
+-- "Hot"\
+-- "Stable and Popular"\
+-- "Everything else"\
+
+* What are the main characteristics of the "hot videos"?  
+
+### Actions:
+-- Look at the `video_count` data  
+-- Define each category with my point of view.  
+-- For each video classify the category  
+-- Use K-means/PCA/any model to see if it close to my classification  
+-- Look at the `video_features` data  
+-- Find connections between variebles for the videos  
+-- Find corelated variebles  
+-- Find main characteristics of the "hot videos"  
+
+
+## Load the 'video_count' data and explore it
+```{r load video_count, include=FALSE}
+video_count <- read.csv("C:\\Users\\Uri Shiran\\Documents\\homeTest\\Home Task playstudio2/Data/video_count.csv")
+```
+            
+In the data we have `r nrow(video_count)` observations for `r max(video_count$video_id)` videos.   
+
+The variables are:  `r names(video_count)`.  
+
+
+```{r explore the data, echo=FALSE}
+# # typs of the variebles
+# str(video_count)
+
+# make 'date' variable to date type
+video_count$date <- as.Date(video_count$date)
+
+
+# glimpse of the data
+knitr::kable(head(video_count),caption = "glimpse to 'video_count' data")
+#kable_styling(kable_input = "glimpse to 'video_count' data",full_width = F)
+# summary of the data
+knitr::kable(summary(video_count),caption = "summary of 'video_count'")
+
+```
+
+
+```{r check range of dates, echo=FALSE}
+# range of dates for each video: first date + last date
+video_date_range <- cbind(
+  aggregate(video_count$date,list(video_count$video_id),min)[,c(1,2)],
+  aggregate(video_count$date,list(video_count$video_id),max)[,2]
+  )
+names(video_date_range) <- c("video_id","First_date","Last_date")
+
+# # count how much days sampled for each video:
+# video_date_range$Last_date - video_date_range$First_date
+# # 120 days. means - the sampling of the videos were for 120 days in a row.
+ 
+# how much samples for each video
+# samples <- aggregate(video_count$date,list(video_count$video_id),length)
+# summary(samples)
+
+
+for (id in 1:100){
+  start <- video_date_range[id,"First_date"]
+  end <- video_date_range[id,"Last_date"]
+  index <- start
+  class(index)
+  while(index < end){
+    if(!index %in% video_count$date[video_count$video_id == id]){
+      # print(paste("found!",index))
+      video_count <- rbind(video_count,c(id,as.character(index),0))
+    }
+    index = index + 1
+  }
+}
+
+video_count$video_id <- as.numeric(video_count$video_id)
+video_count$date <- as.Date(video_count$date)
+video_count$count <- as.numeric(video_count$count)
+
+
+nrow(video_count)
+```
+
+Each video shown on the home page for 121 days. However, for some videos there weren't views every day. To deal with this I added the value *zero* under the 'count of views' to the missing dates to the relevant videos.
+After this, we get count of views for each video over all the 120 days.
+
+### Thoughts:
+The missing dates and the missing values of the views can be explaind in some asspects:
+* There was no connection  to the site so the weren't really views
+* The data is missing because bug or losing the data
+
+implicans on my reserch:
+
+
+## Define each category
+I will define the 'hot video' category by weighting the number of views for each video and a steady trend of views over 120 days.
+A steady trend will be defined by the linear regression's slope.
+When the slope is negative - The more positive the slope (closer to 0) the relatively stable its trend.
+
+
+
+
+
+
+
+## Count total views and average views for each video
+```{r count total and mean views, echo=FALSE}
+# count total views for each video
+video_count_total <- aggregate(video_count$count,list(video_count$video_id),sum)
+video_count_total <- cbind(
+  video_count_total,
+  aggregate(video_count$count,list(video_count$video_id),mean)[,2])
+# give names to the columns
+names(video_count_total) <- c("video_id","count of views","mean of views")
+
+
+# summary the new data
+knitr::kable(summary(video_count_total),caption = "summary of total views for each video")
+
+# show the top total views
+# 6 top videos with the highest number of views
+knitr::kable(head(as.matrix(video_count_total)[order(-video_count_total$`count of views`),]),caption = "top 6 videos with the highest number of views")
+# top 6 videos with the least amount of views
+knitr::kable(head(as.matrix(video_count_total)[order(video_count_total$`count of views`),]),caption = "top 6 videos with the least amount of views")
+
+# # show the top average views
+# # 6 top videos with the highest number of views
+# knitr::kable(head(as.matrix(video_count_total)[order(-video_count_total$`mean of views`),]),caption = "top 6 videos with the highest average of views")
+# # top 6 videos with the least amount of views
+# knitr::kable(head(as.matrix(video_count_total)[order(video_count_total$`mean of views`),]),caption = "top 6 videos with the least average of views")
+
+
+# add the sd
+video_count_total <- cbind(video_count_total,aggregate(video_count$count,list(video_count$video_id),sd)[,2])
+
+# Histogram of number of total views
+hist(video_count_total$`count of views`,main = "Histogram of number of total views for each video", col = "skyblue", xlab = "number of total views")
+# abline(v = quantile(video_count_total$count,c(0.9,0.5)),lwd = 3, col = 3)
+
+
+# Histogram of number of average views
+hist(video_count_total$`mean of views`,main = "Histogram of number of average views for each video", col = "skyblue", xlab = "number of average views")
+# abline(v = quantile(video_count_total$count,c(0.9,0.5)),lwd = 3, col = 3)
+
+```
+
+
+## Calculate the linear regression's slope
+```{r calculate the regression\'s slpoe , echo=FALSE}
+# order the video_count by the video_id and the date
+video_count <- video_count[order(video_count$video_id,video_count$date),]
+
+# make table of video id, regression's slope and sd of views
+analized_data <- matrix(NA,nrow=100,ncol = 2)
+colnames(analized_data) <- c("video id","regression slope")
+for (i in 1:100){
+  place <- which(video_count$video_id==i)
+  reg = lm(video_count$count[place]~video_count$date[place])
+  analized_data[i,"video id"] <- i
+  analized_data[i,"regression slope"] <- round(reg$coefficients[2],2)
+  # analized_data[i,"sd of views"] <- round(sd(video_count$count[place]),2)
+  # analized_data[i,"mean"] <- round(mean(head(video_count$count[place],30)),2)
+  # analized_data[i,"mean2"] <- round(mean(tail(video_count$count[place],30)),2)
+}
+analized_data <- as.data.frame(analized_data)
+# analized_data$gap <- analized_data[,"mean"]-analized_data[,"mean2"]
+
+# show the stabled videos
+knitr::kable(head(analized_data[order(-analized_data$`regression slope`),]),caption = "Top 6 videos that had the stable trend")
+
+# 
+analized_data <- analized_data[order(analized_data$`regression slope`),]
+
+# example for video with the best trend
+place <- which(video_count$video_id==88)
+reg = lm(video_count$count[place]~video_count$date[place])
+plot(video_count$date[place],video_count$count[place],type = "l",ylim = c(0,max(video_count$count[place])),main = paste("Video",i,", The most positive slope: ",round(reg$coefficients[2],2)),xlab = "the period of monitoring the views of the video",ylab = "number of views")
+abline(reg,col = "blue")
+legend("bottomright", legend=c("linear regression line"),
+       col=c("blue"), lty=1)
+
+# # example for video going down
+# place <- which(video_count$video_id==54)
+# reg = lm(video_count$count[place]~video_count$date[place])
+# plot(video_count$date[place],video_count$count[place],type = "l",ylim = c(0,max(video_count$count[place])),main = paste("Video",i,", The most negative slope: ",round(reg$coefficients[2],2)))
+# abline(reg,col = "blue")
+
+```
+
+We see that the video with the most positive slope have relatively stable trend.
+
+
+## Weighting of variables
+```{r Weighting of variables, echo=FALSE}
+
+# add the count of the views per video
+analized_data<-  merge(analized_data,video_count_total[,c("video_id","count of views","mean of views")],by.x = "video id", by.y = "video_id")
+
+knitr::kable(summary(analized_data))
+
+
+#a <- analized_data[order(-analized_data$count,-analized_data$`regression slope`,analized_data$`sd of views`),]
+# View(a)
+
+```
+
+
+
+Looking at the 
+By the reason that I'm not familiar with the data,  I'll choose percentage that I feel is right to define the categories. Later, after I find the feachers of each category, maybe the definition of the categories will be changed a little bit.
+**definition of the categories:**
+hot videos - top 10% videos that had the most count of views in our data **and had increasing/stable lot of views** (**Why top 10%?**)
+Stable and Popular - 50%-90% : not 'hot videos' but more then median of the videos and **were stable over the time**
+Everything else - 0%-50%
+
+
+## questions:
+* For each video, do we see a tendency upon the dates?
+* What Videoes had most views and what less?
+
+
+
+##  Analize video_count
+
+
+* Count total views for each video
+* Count the standard-deviation of number of views - as bigger the value then bigger the variance (less stable)
+* found they have high corelation. **hypothesis?** **[if all had the same mean of watched, did we have the same variance?]**
+* Range of dates for each video: first date + last date
+    * I discoverd that all the videos had a range of 120 days in a row 
+    * question to explore not this time: 
+    **when we have the biggest amount of watchers- specific days (saterday?) or specific time existence in the site?- periods**
+* How much samples for each video: I recieved not only 120, that means that there are videos that didn't have any watchers in some days
+```{r  analize video_count }
+
+# see if we have any visual correlation between the count of views of the videos and their variance
+#plot(video_count_total$count,video_count_total$`sd(count)`)
+# the corelation
+#cor(video_count_total$count,video_count_total$`sd(count)`)
+
+
+
+
+
+
+gp <- ggplot(video_count[1:20,], aes(x = video_count$date[1:20], y = video_count$video_id[1:20], size = video_count$count[1:20]))+
+  geom_point()
+
+
+```
+
+
+
+After I categorize each video, I'll check the features of each category and find the definition of each category.
+
+
+```{r load video_features, include=FALSE}
+video_features <- read.csv("C:\\Users\\Uri Shiran\\Documents\\homeTest\\Home Task playstudio2/Data/video_features.csv")
+```
+
+```{r}
+View(head(video_features))
+nrow(video_features)
+summary(video_features)
+str(video_features) 
+# make the upload_date as date
+video_features$video_upload_date <- as.Date(video_features$video_upload_date)
+# quality : take off the "p" letter
+#video_features$video_quality <- substr(video_features$video_quality,1,nchar(video_features$video_quality)-1)
+str(video_features) 
+```
+
+
+* What is the recommended time for the Videos?
+# Do the video quality influence the times the video was seen? (as better quality then more watchers)
+# There is preffered language? Can I explain why?
+# Do I find any influance of the date the video was uploaded?
+
+## Alalize
+
+```{r}
+hist(video_features$video_length)
+table(video_features$video_language)
+
+
+video_data <- merge(video_features,video_count_total,by = "video_id")
+
+plot(video_data)
+
+ggplot(video_data,aes(video_data$video_length,video_data$count,col = video_data$video_language,shape = video_data$video_quality))+
+   geom_point()
+
+ggplot(video_data,aes(video_data$video_quality,video_data$count,col = video_data$video_language,size = video_data$video_length, alpha = 0.5 ))+
+  geom_point()
+
+View(video_data)
+```
+
+marge the datas
+
+```{r}
+#video_data <- merge(video_features,video_agg_count, by = video_id)
+```
+
+
+first of all I want to see the data
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
