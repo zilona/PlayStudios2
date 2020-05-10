@@ -1,2 +1,6 @@
-# PlayStudios2
-Hometask
+# Online Video Task 
+Hometask from PlayStudios.
+The full task is written in the pdf in the "ReadMe" folder.
+
+In general, I had to look at the video's data and classify each video into 3 categories and find the main characteristics.
+
